@@ -4,7 +4,7 @@ services:
     ports:
       - "5000:5000"
     environment:
-      # わざと間違ったサービス名を指している(実際のサービス名は "db")
+      # わざと間違ったサービス名を指すように設定してある(意図的な設定ミス)
       DB_HOST: "db-server"
     depends_on:
       - db

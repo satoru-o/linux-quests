@@ -51,3 +51,11 @@ curl http://localhost:5000/check
 ```
 
 `{"status":"ok","flag":"FLAG{...}"}`が返ればクリア。値はコンテナ起動のたびに変わる。
+
+取得したFLAGが正しいか判定したい場合は`verify.sh`に引数で渡す。
+
+```bash
+./verify.sh 'FLAG{取得した値}'
+```
+
+一致すれば`正解!`、違えば`不正解`と表示される。
