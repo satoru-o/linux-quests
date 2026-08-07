@@ -37,11 +37,10 @@ docker kill --help
 
 ## 手順2：正しいシグナルで終わらせる
 
-コンテナを作り直してから、今度は`SIGTERM`を送ってみる。
+コンテナを作り直してから、今度は別のシグナルを送ってみる。`docker kill -s <SIGNAL>`で任意のシグナルを指定できる。どのシグナルなら後片付けが走るか調べてみよう。
 
 ```bash
 docker compose up -d --build
-docker kill -s TERM signal-catcher
 ```
 
 <details>
@@ -58,3 +57,11 @@ docker kill -s TERM signal-catcher
 docker cp signal-catcher:/flag.txt .
 cat flag.txt
 ```
+
+取得したFLAGが正しいか判定したい場合は`verify.sh`に引数で渡す。
+
+```bash
+./verify.sh 'FLAG{取得した値}'
+```
+
+一致すれば`正解!`、違えば`不正解`と表示される。
