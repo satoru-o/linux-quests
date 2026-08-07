@@ -53,3 +53,11 @@ docker compose up -d --build
 ```bash
 docker compose exec permission-puzzle cat /secret/flag.txt
 ```
+
+取得したFLAGが正しいか判定したい場合は`verify.sh`に引数で渡す。
+
+```bash
+./verify.sh 'FLAG{取得した値}'
+```
+
+一致すれば`正解!`、違えば`不正解`と表示される。
