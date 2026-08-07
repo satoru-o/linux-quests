@@ -17,7 +17,7 @@ docker kill signal-catcher
 docker cp signal-catcher:/flag.txt .
 ```
 
-`No such container:path`のようなエラーになるはず。
+`/flag.txt`が見つからない、という趣旨のエラーになるはず(正確な文言はDockerのバージョンによって異なる。例:`No such container:path`や`Could not find the file ... in container ...`など)。
 
 <details>
 <summary>ヒント1</summary>
