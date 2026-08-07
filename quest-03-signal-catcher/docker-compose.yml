@@ -1,0 +1,4 @@
+services:
+  signal-catcher:
+    build: .
+    container_name: signal-catcher

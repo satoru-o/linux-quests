@@ -1,0 +1,13 @@
+services:
+  api:
+    build: ./api
+    ports:
+      - "5000:5000"
+    environment:
+      # わざと間違ったサービス名を指している(実際のサービス名は "db")
+      DB_HOST: "db-server"
+    depends_on:
+      - db
+
+  db:
+    build: ./db

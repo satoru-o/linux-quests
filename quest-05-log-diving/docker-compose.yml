@@ -1,0 +1,4 @@
+services:
+  log-diving:
+    build: .
+    container_name: log-diving
