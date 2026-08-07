@@ -11,4 +11,4 @@ fi
 
 echo "starting prerequisite container that occupies port 8080..."
 docker run -d --name "$NAME" -p 8080:80 nginx:alpine > /dev/null
-echo "done. port 8080 is now occupied by '$NAME'."
+echo "done."
