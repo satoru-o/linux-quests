@@ -1,0 +1,11 @@
+[Unit]
+Description=Report log area (size limited)
+
+[Mount]
+What=tmpfs
+Where=/var/log/reportd
+Type=tmpfs
+Options=size=32m,nr_inodes=2048,mode=0755
+
+[Install]
+WantedBy=local-fs.target

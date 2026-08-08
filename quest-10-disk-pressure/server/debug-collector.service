@@ -1,0 +1,7 @@
+[Unit]
+Description=Debug metrics collector (temporary)
+
+[Service]
+ExecStart=/bin/bash -c 'while true; do dd if=/dev/zero bs=1M count=4 >> /var/log/reportd/debug-metrics.bin 2>/dev/null; sleep 1; done'
+Restart=always
+RestartSec=2

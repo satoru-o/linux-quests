@@ -1,0 +1,12 @@
+[Unit]
+Description=Report generator
+Requires=var-log-reportd.mount
+After=var-log-reportd.mount
+
+[Service]
+ExecStart=/usr/local/bin/reportd
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
