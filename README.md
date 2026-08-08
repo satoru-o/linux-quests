@@ -33,6 +33,7 @@ docker compose up -d --build
 | 03 | signal-catcher | シグナルの違い(`SIGTERM`/`SIGKILL`/`docker kill -s`) |
 | 04 | dns-detective | コンテナ間DNS解決の切り分け(`getent hosts`) |
 | 05 | log-diving | ログからの情報抽出(`grep`) |
+| 06 | stack-triage | 複数層が同時に壊れたC/S構成の切り分け(FLAG3つ) |
 
 ## 後片付け
 
@@ -51,5 +52,6 @@ docker compose up -d --build
 | 03 signal-catcher | `SIGTERM`受信時 | シグナルを正しく受け取った瞬間に初めて生成される。存在しないタイミングもある |
 | 04 dns-detective | コンテナ起動時 | `db`アプリがプロセス起動時にメモリ上で生成 |
 | 05 log-diving | ログ生成スクリプト実行時 | 大量のログの中にランダムなFLAGを1行だけ紛れ込ませる |
+| 06 stack-triage | 各プロセス起動時 | `server`と`client`がそれぞれメモリ上で生成。3つとも、対応する層を復旧しないと外から到達できない |
 
 いずれも、リポジトリのファイルを`grep`しても答えは出てこない(はず)。

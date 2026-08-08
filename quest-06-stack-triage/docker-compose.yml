@@ -1,0 +1,25 @@
+services:
+  server:
+    build: ./server
+    ports:
+      - "8080:8080"
+    volumes:
+      - reports:/reports
+    networks:
+      - backend
+
+  client:
+    build: ./client
+    depends_on:
+      - server
+    volumes:
+      - reports:/reports
+    networks:
+      - frontend
+
+volumes:
+  reports:
+
+networks:
+  frontend:
+  backend:
