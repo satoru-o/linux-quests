@@ -35,9 +35,9 @@ STAGE3=$(get_stage3 || true)
 
 print_status() {
   echo "進捗:"
-  [ -n "$STAGE1" ] && echo "  [1] serverへの疎通         : 到達可能" || echo "  [1] serverへの疎通         : まだ"
-  [ -n "$STAGE2" ] && echo "  [2] client -> server の連携: 成立" || echo "  [2] client -> server の連携: まだ"
-  [ -n "$STAGE3" ] && echo "  [3] レポートの受け渡し     : 成立" || echo "  [3] レポートの受け渡し     : まだ"
+  [ -n "$STAGE1" ] && echo "  [1] serverへの疎通: 到達可能" || echo "  [1] serverへの疎通: まだ"
+  [ -n "$STAGE2" ] && echo "  [2] clientからserverの名前解決: 成立" || echo "  [2] clientからserverの名前解決: まだ"
+  [ -n "$STAGE3" ] && echo "  [3] レポートの受け渡し: 成立" || echo "  [3] レポートの受け渡し: まだ"
 }
 
 if [ "$1" = "--status" ]; then
@@ -58,7 +58,7 @@ if [ -n "$STAGE1" ] && [ "$USER_FLAG" = "$STAGE1" ]; then
 fi
 
 if [ -n "$STAGE2" ] && [ "$USER_FLAG" = "$STAGE2" ]; then
-  echo "正解! [2/3] client -> server の連携  $USER_FLAG"
+  echo "正解! [2/3] clientからserverの名前解決  $USER_FLAG"
   exit 0
 fi
 
