@@ -1,0 +1,11 @@
+services:
+  server:
+    build: ./server
+    container_name: quest11-server
+    hostname: ip-10-0-2-17
+    privileged: true
+    cgroup: host
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    ports:
+      - "2223:22"

@@ -1,0 +1,10 @@
+[Unit]
+Description=Batch result watchdog
+
+[Service]
+ExecStart=/usr/local/sbin/batch-watchdog
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

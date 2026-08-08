@@ -1,0 +1,4 @@
+PATH=/opt/batch/bin:/usr/local/bin:/usr/bin:/bin
+BATCH_HOME=/opt/batch
+
+* * * * * root /opt/batch/aggregate.sh >> /var/log/batch/cron.log 2>&1

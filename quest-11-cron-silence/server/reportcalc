@@ -1,0 +1,3 @@
+#!/bin/bash
+# 集計の実体(ダミー)。/usr/local/bin にあるので PATH が通っていないと見つからない。
+echo $(( (RANDOM % 900) + 100 ))
