@@ -35,7 +35,7 @@ docker compose exec probe curl -sS -m 5 http://target:8080/health
 | 2 | 期待どおりlistenしているか | `docker compose exec target ss -tlnp` | **どのアドレスの何番**で待っているか |
 | 3 | 名前は引けるか / どこを指すか | `docker compose exec probe getent hosts target` | 引けるか、引けたとして**どのIPか** |
 | 4 | TCPで繋がるか | `docker compose exec probe nc -z -w2 target 8080` | 拒否されるか、無反応か、開くか |
-| 5 | アプリが正しく返すか | `docker compose exec probe curl -sSv -m 5 http://target:8080/health` | ステータスコード |
+| 5 | アプリが正しく返すか | `docker compose exec probe curl -sSv -m 5 http://target:8080/health` | ステータス行が返るか、返るなら何番か |
 
 ### 観測結果の読み方
 
@@ -49,6 +49,99 @@ docker compose exec probe curl -sS -m 5 http://target:8080/health
 | ステータスコードが返る | アプリのエラー / パスが無い | ここまで来たらネットワークは正常。4xx/5xxはアプリの問題 |
 
 最後の行が地味に大事で、**ステータスコードが返っている時点でネットワーク層は全部シロ**。それ以上`ss`や`getent`を叩いても何も出てこない。
+
+## 第5段のやり方(ここで詰まりやすい)
+
+第4段(`nc -z`)まで全部シロだった場合、残りの症例は第5段のものしかない。ところがここは`ss`や`getent`のように「見れば分かる」出力が出ないので、**証拠の集め方を知らないと手が止まる**。
+
+### まず二分する: ステータス行が返るか
+
+```bash
+docker compose exec probe curl -sSv -m 5 http://target:8080/health
+```
+
+`-v`を付けたときに`<`で始まる行が**1行でも返るかどうか**。ここだけで話が変わる。
+
+- `< HTTP/1.1 ...`が返る → アプリは応答している。あとは番号を読むだけ
+- 何も返らずタイムアウトする → アプリが応答を返していない。以下の手順で詰める
+
+### ステータス行が返らないときの詰め方
+
+**(a) `curl -v`の3行を並べて読む**
+
+```
+* Connected to target (172.19.0.3) port 8080     ← 繋がった
+* Request completely sent off                     ← 送りきった
+* Operation timed out ... with 0 bytes received   ← 1バイトも返らない
+```
+
+この3つが揃っていたら経路の問題ではない。経路が悪ければ`Connected`が出ない。`0 bytes received`は「遅い」ではなく「一度も返ってきていない」という意味。
+
+**(b) 時間を分けて測る**
+
+```bash
+docker compose exec probe curl -sS -m 5 -o /dev/null \
+  -w 'connect=%{time_connect}s starttransfer=%{time_starttransfer}s\n' \
+  http://target:8080/health
+```
+
+`connect`が一瞬で終わっているのに`starttransfer`が`0.000000`なら、**繋ぐのは即座にできていて、応答だけが始まっていない**。経路で待たされているならこの逆になる。
+
+**(c) サーバ側の接続状態を見る**
+
+```bash
+docker compose exec target ss -tn
+```
+
+- `ESTAB` … 接続が生きたまま保持されている
+- `CLOSE-WAIT` … **相手は切ったのに、こちら側のアプリがまだ閉じていない**
+
+`CLOSE-WAIT`が`curl`を叩いた回数だけ溜まっていくなら、アプリが接続を掴んだまま離していない証拠になる。実務でも`CLOSE-WAIT`の蓄積はアプリが握って離さないときの典型的な症状。
+
+なお`curl`がタイムアウトした後に見ると`CLOSE-WAIT`、待っている最中に見ると`ESTAB`になる。待機中の状態を見たいならこうする。
+
+```bash
+docker compose exec -T probe curl -sS -m 10 http://target:8080/health &
+sleep 1
+docker compose exec target ss -tn
+```
+
+**(d) アクセスログが「無い」ことを証拠にする**
+
+```bash
+docker compose logs target
+```
+
+Webサーバのアクセスログは**応答を返し終えた時点で**書かれる。接続はできているのにアクセスログが1行も出ていないなら、応答が完了していないということ。「ログが出ない」も立派な観測結果として使う。
+
+### ステータス行が返るときの読み分け
+
+| 番号 | 意味 | 次に見るもの |
+| --- | --- | --- |
+| `4xx` | サーバは応答している。**そのパスが登録されていない** | パスの綴り、プレフィックス、HTTPメソッド |
+| `5xx` | ハンドラは存在するが、その中で落ちている | アプリのログ(トレースバック) |
+
+どちらもサーバ側のログに記録が残るので、そこで裏を取る。
+
+```bash
+docker compose logs target | grep "GET /health"
+```
+
+リクエストが記録され、番号まで残っていれば、ネットワークは完全にシロだと確定できる。
+
+### 「わからん」となったときの立て直し方
+
+証拠が足りないのではなく、**どの段まではシロだと言い切れるかを言語化していない**ことがほとんど。紙でもコメントでもいいので、こう書き出してみる。
+
+```
+第1段 プロセス生存      : シロ (Up)
+第2段 listen            : シロ (0.0.0.0:8080)
+第3段 名前解決          : シロ (172.19.0.3、targetのIPと一致)
+第4段 TCP               : シロ (nc succeeded)
+第5段 アプリ応答        : クロ  ← 残ったのはここだけ
+```
+
+ここまで書ければ、`./answer.sh --list`のうち条件を満たす項目は自然に絞り込まれる。診断とは、消去法で容疑者を減らしていく作業のこと。
 
 ## 使い方
 
