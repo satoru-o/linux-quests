@@ -1,0 +1,40 @@
+services:
+  fixture:
+    build: ./fixture
+    environment:
+      CASE: "normal"
+      JWT_SECRET: "dojo-signing-secret"
+      EXPECTED_AUD: "reports-api"
+      REQUIRED_SCOPE: "reports:read"
+    volumes:
+      - creds:/creds
+
+  api:
+    build: ./api
+    environment:
+      JWT_SECRET: "dojo-signing-secret"
+      EXPECTED_AUD: "reports-api"
+      REQUIRED_SCOPE: "reports:read"
+    volumes:
+      - creds:/creds
+    depends_on:
+      fixture:
+        condition: service_completed_successfully
+
+  proxy:
+    build: ./proxy
+    environment:
+      UPSTREAM: "http://api:8080"
+      STRIP_AUTH: "0"
+    depends_on:
+      - api
+
+  client:
+    build: ./client
+    volumes:
+      - creds:/creds
+    depends_on:
+      - proxy
+
+volumes:
+  creds:
