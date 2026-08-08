@@ -34,7 +34,7 @@ docker compose up -d --build
 | 04 | dns-detective | コンテナ間DNS解決の切り分け(`getent hosts`) |
 | 05 | log-diving | ログからの情報抽出(`grep`) |
 | 06 | stack-triage | 複数層が同時に壊れたC/S構成の切り分け(FLAG3つ) |
-| 07 | network-triage | ネットワーク診断の型(ランダム出題ドリル / 原因申告制) |
+| 07 | network-triage | ネットワーク診断の型(ランダム出題ドリル / 初級8種+上級6種 / カテゴリ別コマンド集つき) |
 | 08 | permission-triage | 権限診断の型(ランダム出題ドリル / 原因申告制) |
 | 09 | auth-triage | 認証・認可診断の型(ランダム出題ドリル / 原因申告制) |
 

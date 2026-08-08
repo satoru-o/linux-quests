@@ -8,35 +8,50 @@ set -e
 
 cd "$(dirname "$0")"
 
-CASES="process-down bind-localhost wrong-port network-split wrong-address blackhole app-error app-notfound"
+BASIC="process-down bind-localhost wrong-port network-split wrong-address blackhole app-error app-notfound"
+HARD="firewall-drop firewall-reject slow-response empty-reply ip-allowlist wrong-host"
+CASES="$BASIC $HARD"
 
 describe() {
   case "$1" in
-    process-down)   echo "プロセス/コンテナ自体が動いていない" ;;
-    bind-localhost) echo "127.0.0.1でlistenしていて外から届かない" ;;
-    wrong-port)     echo "想定と違うポートでlistenしている" ;;
-    network-split)  echo "相手と別のネットワークにいて名前が引けない" ;;
-    wrong-address)  echo "名前は引けるが、想定と違うアドレスを指している" ;;
-    blackhole)      echo "TCPは繋がるが応答が返ってこない" ;;
-    app-error)      echo "HTTPは通るがアプリがエラーを返す(5xx)" ;;
-    app-notfound)   echo "HTTPは通るがそのパスが存在しない(4xx)" ;;
+    process-down)    echo "プロセス/コンテナ自体が動いていない" ;;
+    bind-localhost)  echo "127.0.0.1でlistenしていて外から届かない" ;;
+    wrong-port)      echo "想定と違うポートでlistenしている" ;;
+    network-split)   echo "相手と別のネットワークにいて名前が引けない" ;;
+    wrong-address)   echo "名前は引けるが、想定と違うアドレスを指している" ;;
+    blackhole)       echo "TCPは繋がるが応答が返ってこない" ;;
+    app-error)       echo "HTTPは通るがアプリがエラーを返す(5xx)" ;;
+    app-notfound)    echo "HTTPは通るがそのパスが存在しない(4xx)" ;;
+    firewall-drop)   echo "パケットフィルタが黙って捨てている(無反応)" ;;
+    firewall-reject) echo "パケットフィルタがRSTで拒否している(listenは正常)" ;;
+    slow-response)   echo "応答は返るが、クライアントのタイムアウトより遅い" ;;
+    empty-reply)     echo "接続直後に切られ、応答が空で返る" ;;
+    ip-allowlist)    echo "送信元IPで弾かれている(403)" ;;
+    wrong-host)      echo "Hostヘッダが想定と違い、振り分け先を間違えている" ;;
   esac
 }
 
 rung() {
   case "$1" in
-    process-down)                 echo "第1段: プロセスは生きているか" ;;
-    bind-localhost|wrong-port)    echo "第2段: 期待どおりlistenしているか" ;;
-    network-split|wrong-address)  echo "第3段: 名前は引けるか / どこを指しているか" ;;
-    blackhole)                    echo "第4段: TCPで繋がり、応答が返るか" ;;
-    app-error|app-notfound)       echo "第5段: アプリが正しく返しているか" ;;
+    process-down)                          echo "第1段: プロセスは生きているか" ;;
+    bind-localhost|wrong-port)             echo "第2段: 期待どおりlistenしているか" ;;
+    network-split|wrong-address)           echo "第3段: 名前は引けるか / どこを指しているか" ;;
+    blackhole|empty-reply)                 echo "第4段と第5段の境目: 繋がるが応答が返らない" ;;
+    firewall-drop|firewall-reject)         echo "第4段の裏: listenは正常なのに届かない(フィルタ)" ;;
+    slow-response)                         echo "第5段: 応答はある。クライアント側の待ち時間の問題" ;;
+    app-error|app-notfound|ip-allowlist|wrong-host) echo "第5段: アプリが正しく返しているか" ;;
   esac
 }
 
 if [ "$1" = "--list" ]; then
   echo "申告できる原因:"
-  for c in $CASES; do
-    printf '  %-15s %s\n' "$c" "$(describe "$c")"
+  echo "  [初級]"
+  for c in $BASIC; do
+    printf '    %-16s %s\n' "$c" "$(describe "$c")"
+  done
+  echo "  [上級] (./new-case.sh --hard で出題)"
+  for c in $HARD; do
+    printf '    %-16s %s\n' "$c" "$(describe "$c")"
   done
   exit 0
 fi

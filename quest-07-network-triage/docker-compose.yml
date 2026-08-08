@@ -1,6 +1,8 @@
 services:
   target:
     build: ./target
+    cap_add:
+      - NET_ADMIN
     networks:
       - dojo
 
