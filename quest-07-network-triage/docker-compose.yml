@@ -1,0 +1,13 @@
+services:
+  target:
+    build: ./target
+    networks:
+      - dojo
+
+  probe:
+    build: ./probe
+    networks:
+      - dojo
+
+networks:
+  dojo:
