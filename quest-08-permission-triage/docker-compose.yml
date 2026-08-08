@@ -1,0 +1,19 @@
+services:
+  fixture:
+    build: ./fixture
+    user: root
+    environment:
+      CASE: "normal"
+    volumes:
+      - data:/data
+
+  work:
+    build: ./work
+    volumes:
+      - data:/data
+    depends_on:
+      fixture:
+        condition: service_completed_successfully
+
+volumes:
+  data:
