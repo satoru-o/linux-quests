@@ -1,0 +1,15 @@
+[Unit]
+Description=Order API
+After=network.target
+
+[Service]
+Type=simple
+User=orderapi
+WorkingDirectory=/opt/orderapi
+ExecStart=/opt/orderapi/serve.sh
+ExecStopPost=/bin/rm -f /var/lib/orderapi/flag.txt
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
