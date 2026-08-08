@@ -1,7 +1,7 @@
 FROM alpine:3.20
 
-# 診断に使う道具一式(namei は util-linux)
-RUN apk add --no-cache util-linux
+# 診断に使う道具一式(namei/findmnt=util-linux, getfacl=acl, lsattr=e2fsprogs-extra)
+RUN apk add --no-cache coreutils util-linux acl e2fsprogs-extra file
 
 RUN addgroup -g 1000 appgroup && adduser -u 1000 -G appgroup -D appuser \
  && addgroup -g 3000 analysts && addgroup appuser analysts \

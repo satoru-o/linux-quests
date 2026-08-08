@@ -2,6 +2,8 @@ services:
   fixture:
     build: ./fixture
     user: root
+    cap_add:
+      - LINUX_IMMUTABLE
     environment:
       CASE: "normal"
     volumes:

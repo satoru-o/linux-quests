@@ -1,5 +1,8 @@
 FROM alpine:3.20
 
+# 症例の仕込みに使う道具(ACLと拡張属性)
+RUN apk add --no-cache acl e2fsprogs-extra
+
 # work側と同じUID/GIDで揃えておく(ズレると所有者の見え方が変わる)
 RUN addgroup -g 1000 appgroup && adduser -u 1000 -G appgroup -D appuser \
  && addgroup -g 3000 analysts && addgroup appuser analysts \

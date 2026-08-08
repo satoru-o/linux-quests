@@ -37,3 +37,10 @@ if out=$(rm /data/old.txt 2>&1); then
 else
   echo "    NG: $out"
 fi
+
+run 5 "実行: /data/run.sh"
+if out=$(/data/run.sh 2>&1); then
+  echo "    OK: $out"
+else
+  echo "    NG: $out"
+fi

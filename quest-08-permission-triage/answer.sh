@@ -8,7 +8,9 @@ set -e
 
 cd "$(dirname "$0")"
 
-CASES="not-owner group-not-member no-read-bit dir-no-exec dir-no-read dir-no-write sticky-other readonly-mount"
+BASIC="not-owner group-not-member no-read-bit dir-no-exec dir-no-read dir-no-write sticky-other readonly-mount"
+HARD="acl-deny immutable-attr no-exec-bit noexec-mount symlink-denied uid-unmapped"
+CASES="$BASIC $HARD"
 
 describe() {
   case "$1" in
@@ -20,6 +22,12 @@ describe() {
     dir-no-write)     echo "親ディレクトリにw(書き込み)が無く、作成・削除ができない" ;;
     sticky-other)     echo "stickyビットのあるディレクトリで、他人のファイルを消せない" ;;
     readonly-mount)   echo "権限ビットではなく、マウントが読み取り専用" ;;
+    acl-deny)         echo "モードは緩いが、ACLで個別に拒否されている" ;;
+    immutable-attr)   echo "拡張属性(immutable)で変更が禁止されている" ;;
+    no-exec-bit)      echo "実行しようとしたが、xビットが無い" ;;
+    noexec-mount)     echo "xビットはあるが、マウントがnoexec" ;;
+    symlink-denied)   echo "対象はシンボリックリンクで、リンク先が読めない" ;;
+    uid-unmapped)     echo "所有者がこのコンテナに存在しないUIDになっている" ;;
   esac
 }
 
@@ -29,14 +37,24 @@ rung() {
     group-not-member)                         echo "第1段と第2段の突き合わせ: 自分の所属と対象のグループ" ;;
     dir-no-exec|dir-no-read|dir-no-write)     echo "第3段: そこへ至る経路(親ディレクトリ)のビット" ;;
     sticky-other)                             echo "第3段: 親ディレクトリの特殊ビット" ;;
-    readonly-mount)                           echo "第5段: 権限ビットの外側(マウントオプション)" ;;
+    readonly-mount|noexec-mount)              echo "第5段: 権限ビットの外側(マウントオプション)" ;;
+    acl-deny)                                 echo "第2段の裏: モードの外側(ACL)" ;;
+    immutable-attr)                           echo "第2段の裏: モードの外側(拡張属性)" ;;
+    no-exec-bit)                              echo "第2段: 実行に必要なのはxビット" ;;
+    symlink-denied)                           echo "第3段: 経路の終点(リンク先)を見る" ;;
+    uid-unmapped)                             echo "第1段と第2段の突き合わせ: 名前ではなく数字で出ている" ;;
   esac
 }
 
 if [ "$1" = "--list" ]; then
   echo "申告できる原因:"
-  for c in $CASES; do
-    printf '  %-18s %s\n' "$c" "$(describe "$c")"
+  echo "  [初級]"
+  for c in $BASIC; do
+    printf '    %-16s %s\n' "$c" "$(describe "$c")"
+  done
+  echo "  [上級] (./new-case.sh --hard で出題)"
+  for c in $HARD; do
+    printf '    %-16s %s\n' "$c" "$(describe "$c")"
   done
   exit 0
 fi
@@ -78,6 +96,7 @@ fi
 if [ "$(printf '%s' "$GUESS" | sha256sum | cut -d' ' -f1)" != "$CASE_HASH" ]; then
   echo "不正解: $GUESS ではない。"
   echo "エラーメッセージだけで決めつけず、id / ls -l / namei を順に確認し直すこと。"
+  echo "モードが正しく見えるなら、その外側(ACL・拡張属性・マウント)を疑う。"
   exit 1
 fi
 
