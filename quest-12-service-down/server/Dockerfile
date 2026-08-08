@@ -19,6 +19,7 @@ RUN useradd -r -s /usr/sbin/nologin orderapi \
 
 COPY serve.sh /opt/orderapi/serve.sh
 COPY app.conf /etc/orderapi/app.conf
+COPY app.conf.example /etc/orderapi/app.conf.example
 COPY orderapi.service /lib/systemd/system/orderapi.service
 
 RUN chmod +x /opt/orderapi/serve.sh \

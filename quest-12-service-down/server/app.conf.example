@@ -1,0 +1,9 @@
+# orderapi の設定ファイルのひな形
+#   本番では /etc/orderapi/app.conf として配置すること
+#   このファイル自体は読み込まれない
+
+# APIが待ち受けるポート
+LISTEN_PORT=8080
+
+# ワーカー数
+WORKERS=4

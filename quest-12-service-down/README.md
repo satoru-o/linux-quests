@@ -236,7 +236,20 @@ systemctl list-dependencies --reverse orderapi
 systemctl show -p Requires,After,Wants orderapi
 ```
 
-## 8. 復旧を確認する
+## 8. 設定の中身が分からないとき
+
+消えた設定を作り直すなら、**ひな形が残っていないか**をまず探す。
+
+```bash
+ls -la /etc/orderapi/                        # .example や .dist が無いか
+cat /etc/orderapi/app.conf.example
+find /etc /opt -name '*.example' -o -name '*.dist' 2>/dev/null | head
+grep -n 'app.conf\|LISTEN_PORT' /opt/orderapi/serve.sh   # 何を読んでいるか
+```
+
+**アプリが何を必要としているかは、アプリの実装に書いてある。** 設定ファイルを消してしまったときの復旧は、ひな形か実装のどちらかから組み立てる。
+
+## 9. 復旧を確認する
 
 ```bash
 systemctl is-active orderapi

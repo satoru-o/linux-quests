@@ -250,7 +250,22 @@ timedatectl                         # タイムゾーン
 
 `0 3 * * *`は「毎日3時0分」であって毎分ではない。**「動かない」ではなく「まだその時刻になっていない」だけ**ということがある。
 
-## 8. 復旧を確認する
+## 8. アプリ自身の仕様を確かめる
+
+「この変数には何を入れるのが正解か」は、推測せずにアプリに聞く。
+
+```bash
+ls -la /opt/batch/
+cat /opt/batch/README                       # アプリ自身のドキュメント
+ls -la /opt/batch/etc/                      # 設定ファイルの置き場所
+find /opt /etc -name 'README*' -o -name '*.example' 2>/dev/null | head
+head -20 /opt/batch/aggregate.sh            # スクリプト冒頭のコメント
+grep -n 'BATCH_HOME\|PATH' /opt/batch/aggregate.sh   # 何をどう使っているか
+```
+
+**必要な環境変数や設定の位置は、たいていアプリ側に書いてある。** 現場でも同じで、値を当てずっぽうで入れる前にアプリのドキュメントと実装を読む。
+
+## 9. 復旧を確認する
 
 ```bash
 sudo journalctl -u cron -f                    # 次の実行を待って見届ける

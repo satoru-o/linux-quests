@@ -1,0 +1,19 @@
+batch — 日次集計バッチ
+======================
+
+設置場所
+  /opt/batch                本体
+  /opt/batch/bin/           このバッチが使うコマンド群
+  /opt/batch/etc/batch.conf 設定ファイル
+
+必要な環境変数
+  BATCH_HOME   本体の設置場所を指す。設定ファイルの位置をここから解決する。
+               このサーバでは /opt/batch。
+  PATH         /opt/batch/bin を含めること。集計コマンド(reportcalc)は
+               ここに置かれており、PATHが通っていないと解決できない。
+
+  cronから実行する場合、これらはログインシェルから引き継がれない。
+  cronの定義ファイル側で明示的に指定すること。
+
+出力
+  /var/lib/batch/result.json  集計結果

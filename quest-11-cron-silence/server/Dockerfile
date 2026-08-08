@@ -13,9 +13,11 @@ RUN useradd -m -s /bin/bash ec2-user \
  && chmod 700 /home/ec2-user/.ssh \
  && chown -R ec2-user:ec2-user /home/ec2-user/.ssh
 
-RUN mkdir -p /opt/batch/bin /var/lib/batch /var/log/batch /run/sshd
+RUN mkdir -p /opt/batch/bin /opt/batch/etc /var/lib/batch /var/log/batch /run/sshd
 
 COPY aggregate.sh /opt/batch/aggregate.sh
+COPY batch.conf /opt/batch/etc/batch.conf
+COPY batch-README /opt/batch/README
 COPY reportcalc /opt/batch/bin/reportcalc
 COPY batch-watchdog.sh /usr/local/sbin/batch-watchdog
 COPY batch-watchdog.service /etc/systemd/system/batch-watchdog.service
