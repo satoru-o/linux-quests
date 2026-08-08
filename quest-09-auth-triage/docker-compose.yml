@@ -15,6 +15,7 @@ services:
       JWT_SECRET: "dojo-signing-secret"
       EXPECTED_AUD: "reports-api"
       REQUIRED_SCOPE: "reports:read"
+      RATE_LIMIT: "0"
     volumes:
       - creds:/creds
     depends_on:
@@ -26,6 +27,9 @@ services:
     environment:
       UPSTREAM: "http://api:8080"
       STRIP_AUTH: "0"
+      OVERWRITE_AUTH: "0"
+    volumes:
+      - creds:/creds
     depends_on:
       - api
 

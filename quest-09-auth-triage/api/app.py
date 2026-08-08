@@ -9,6 +9,7 @@ app = Flask(__name__)
 JWT_SECRET = os.environ.get("JWT_SECRET", "dojo-signing-secret")
 EXPECTED_AUD = os.environ.get("EXPECTED_AUD", "reports-api")
 REQUIRED_SCOPE = os.environ.get("REQUIRED_SCOPE", "reports:read")
+RATE_LIMIT = os.environ.get("RATE_LIMIT", "0") == "1"
 REVOKED_PATH = Path("/creds/revoked")
 
 
@@ -22,6 +23,12 @@ def revoked_ids():
         return {line.strip() for line in REVOKED_PATH.read_text().splitlines() if line.strip()}
     except FileNotFoundError:
         return set()
+
+
+@app.get("/healthz")
+def healthz():
+    # 起動確認用。診断の邪魔にならないようログには残さない
+    return "ok\n"
 
 
 @app.get("/reports")
@@ -48,10 +55,11 @@ def reports():
             algorithms=["HS256"],
             audience=EXPECTED_AUD,
         )
-    except jwt.InvalidSignatureError:
+    except (jwt.InvalidSignatureError, jwt.InvalidAlgorithmError):
+        # 鍵が違う場合も、想定外のアルゴリズムの場合もここに来る
         log(shown, "401 署名検証に失敗")
         return jsonify({"error": "unauthorized"}), 401
-    except (jwt.ExpiredSignatureError, jwt.InvalidAudienceError):
+    except (jwt.ExpiredSignatureError, jwt.InvalidAudienceError, jwt.ImmatureSignatureError):
         log(shown, "401 クレーム検証に失敗")
         return jsonify({"error": "unauthorized"}), 401
     except jwt.PyJWTError:
@@ -62,13 +70,20 @@ def reports():
         log(shown, "401 失効済みトークン")
         return jsonify({"error": "unauthorized"}), 401
 
+    sub = claims.get("sub", "?")
     scopes = claims.get("scope", "").split()
     if REQUIRED_SCOPE not in scopes:
         # 誰かは分かっているが、その操作は許されていない
-        log(shown, "403 スコープ不足")
+        log(shown, f"403 スコープ不足 sub={sub}")
         return jsonify({"error": "forbidden"}), 403
 
-    log(shown, "200 ok")
+    if RATE_LIMIT:
+        log(shown, f"429 レート制限 sub={sub}")
+        resp = jsonify({"error": "too many requests"})
+        resp.headers["Retry-After"] = "60"
+        return resp, 429
+
+    log(shown, f"200 ok sub={sub}")
     return jsonify({"status": "ok", "reports": ["2026-06", "2026-07", "2026-08"]})
 
 

@@ -1,22 +1,33 @@
 #!/bin/sh
 # ランダムに1つ故障を仕込んで、新しい症例を立ち上げる。
 # 何が仕込まれたかは表示しない。診断して ./answer.sh で申告すること。
+#
+#   ./new-case.sh            初級から1つ
+#   ./new-case.sh --hard     上級から1つ
+#   ./new-case.sh --all      初級+上級から1つ
+#   ./new-case.sh <原因ID>   指定した症例
 set -e
 
 cd "$(dirname "$0")"
 
-CASES="no-credential wrong-scheme token-expired wrong-audience bad-signature revoked-token insufficient-scope proxy-strips-header"
+BASIC="no-credential wrong-scheme token-expired wrong-audience bad-signature revoked-token insufficient-scope proxy-strips-header"
+HARD="clock-skew wrong-algorithm double-bearer token-truncated proxy-overwrites-auth rate-limited"
 
-pick_case() {
-  n=$(echo "$CASES" | wc -w)
+pick_from() {
+  n=$(echo "$1" | wc -w)
   r=$(od -An -N2 -tu2 < /dev/urandom | tr -d ' ')
   i=$((r % n + 1))
-  echo "$CASES" | cut -d' ' -f"$i"
+  echo "$1" | cut -d' ' -f"$i"
 }
 
-CASE="${1:-$(pick_case)}"
+case "${1:-}" in
+  --hard) CASE=$(pick_from "$HARD") ;;
+  --all)  CASE=$(pick_from "$BASIC $HARD") ;;
+  "")     CASE=$(pick_from "$BASIC") ;;
+  *)      CASE="$1" ;;
+esac
 
-if ! echo " $CASES " | grep -q " $CASE "; then
+if ! echo " $BASIC $HARD " | grep -q " $CASE "; then
   echo "不明な症例: $CASE"
   exit 1
 fi
@@ -45,6 +56,21 @@ docker compose down -v > /dev/null 2>&1 || true
       echo "    environment:"
       echo "      STRIP_AUTH: \"1\""
       ;;
+    double-bearer)
+      echo "  client:"
+      echo "    environment:"
+      echo "      AUTH_SCHEME: \"Bearer Bearer\""
+      ;;
+    proxy-overwrites-auth)
+      echo "  proxy:"
+      echo "    environment:"
+      echo "      OVERWRITE_AUTH: \"1\""
+      ;;
+    rate-limited)
+      echo "  api:"
+      echo "    environment:"
+      echo "      RATE_LIMIT: \"1\""
+      ;;
   esac
 } > docker-compose.override.yml
 
@@ -54,7 +80,7 @@ docker compose up -d --build > /dev/null 2>&1
 # APIが応答を返せるようになるまで待つ。起動待ちを障害と誤診しないため。
 i=0
 while [ "$i" -lt 40 ]; do
-  if docker compose exec -T client curl -sS -o /dev/null -m 2 http://proxy:8080/reports > /dev/null 2>&1; then
+  if docker compose exec -T client curl -sS -o /dev/null -m 2 http://api:8080/healthz > /dev/null 2>&1; then
     break
   fi
   i=$((i + 1))

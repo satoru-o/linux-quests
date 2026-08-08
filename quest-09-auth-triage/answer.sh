@@ -8,7 +8,9 @@ set -e
 
 cd "$(dirname "$0")"
 
-CASES="no-credential wrong-scheme token-expired wrong-audience bad-signature revoked-token insufficient-scope proxy-strips-header"
+BASIC="no-credential wrong-scheme token-expired wrong-audience bad-signature revoked-token insufficient-scope proxy-strips-header"
+HARD="clock-skew wrong-algorithm double-bearer token-truncated proxy-overwrites-auth rate-limited"
+CASES="$BASIC $HARD"
 
 describe() {
   case "$1" in
@@ -20,6 +22,12 @@ describe() {
     revoked-token)       echo "形式は正しいが失効済みのトークン" ;;
     insufficient-scope)  echo "認証は通っているがスコープが足りない(403)" ;;
     proxy-strips-header) echo "クライアントは送っているが、途中の経路で消えている" ;;
+    clock-skew)          echo "時計のズレで、まだ有効になっていないトークン" ;;
+    wrong-algorithm)     echo "署名アルゴリズムが受け側の想定と違う" ;;
+    double-bearer)       echo "スキームが二重になっている(Bearer Bearer ...)" ;;
+    token-truncated)     echo "トークンが途中で欠けている" ;;
+    proxy-overwrites-auth) echo "途中の経路が別の資格情報で上書きしている" ;;
+    rate-limited)        echo "認証は通っているが回数制限に当たっている(429)" ;;
   esac
 }
 
@@ -29,14 +37,23 @@ rung() {
     no-credential)                         echo "第3段: クライアントが実際に何を送ったか" ;;
     proxy-strips-header)                   echo "第3段と第4段の差分: 送ったのに届いていない" ;;
     wrong-scheme|bad-signature|revoked-token) echo "第4段: サーバに何が届き、どこで弾かれたか" ;;
-    token-expired|wrong-audience)          echo "第5段: トークンの中身(claims)を期待値と突き合わせる" ;;
+    token-expired|wrong-audience|clock-skew) echo "第5段: トークンの中身(claims)を期待値と突き合わせる" ;;
+    wrong-algorithm)                       echo "第5段: ペイロードではなくヘッダ(第1セグメント)を見る" ;;
+    double-bearer|token-truncated)         echo "第3段: 送った文字列そのものを見る" ;;
+    proxy-overwrites-auth)                 echo "第3段と第4段の差分: 送ったものと届いたものが別人格" ;;
+    rate-limited)                          echo "第2段: ステータスコード(429は認証でも認可でもない)" ;;
   esac
 }
 
 if [ "$1" = "--list" ]; then
   echo "申告できる原因:"
-  for c in $CASES; do
-    printf '  %-20s %s\n' "$c" "$(describe "$c")"
+  echo "  [初級]"
+  for c in $BASIC; do
+    printf '    %-22s %s\n' "$c" "$(describe "$c")"
+  done
+  echo "  [上級] (./new-case.sh --hard で出題)"
+  for c in $HARD; do
+    printf '    %-22s %s\n' "$c" "$(describe "$c")"
   done
   exit 0
 fi
