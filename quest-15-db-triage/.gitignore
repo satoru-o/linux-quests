@@ -1,0 +1,3 @@
+.state
+docker-compose.override.yml
+ssh/

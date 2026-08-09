@@ -1,0 +1,11 @@
+[Unit]
+Description=Batch loader
+After=postgresql.service
+
+[Service]
+ExecStart=/usr/bin/python3 /opt/batch/conn-hog.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

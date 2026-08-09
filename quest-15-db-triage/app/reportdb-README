@@ -1,0 +1,155 @@
+レポート基盤 構成メモ
+=====================
+
+このサーバの「あるべき姿」を書いてある。障害時はここと現状の差分を見ること。
+
+
+1. 構成
+-------
+
+  利用者 --> reportapi (このサーバ:8080) --> reportdb.internal:5432
+             ip-10-0-1-42                    ip-10-0-101-7
+             (アプリサブネット)              (DBサブネット)
+
+  DBは別インスタンス。SSHは通っていないしシェルも無い。
+  触れるのは psql だけで、postgresql.conf も pg_hba.conf も
+  サーバログのファイルも読めない。
+
+  このサーバで動いているもの:
+
+    reportapi.service    アプリ本体。/opt/reportapi/reportapi.py
+    db-watchdog.service  死活監視。3つの機能を10秒ごとに叩いている
+    conn-hog.service     日中バッチ (平常時は停止・無効)
+    lock-holder.service  夜間集計 (平常時は停止・無効)
+
+
+2. APIの仕様
+------------
+
+  GET  /api/reports   直近のレポートを最大5件返す
+                      正常時は1件以上返る (0件は異常)
+  POST /api/reports   レポートを1件登録する。201を返す
+                      内部で reports へのINSERTと counters のUPDATEを行う
+  GET  /api/summary   対象リージョンごとの直近7日の合計を返す
+                      report_targets の全40件が返る
+
+  DBのエラーはそのまま500の本文に出る。ログは journalctl -u reportapi。
+
+
+3. アプリの接続設定
+-------------------
+
+  /etc/reportapi/app.conf
+
+    DB_HOST=reportdb.internal
+    DB_PORT=5432
+    DB_NAME=reportdb
+    DB_USER=reportapi
+
+  アプリは接続プールを持たず、リクエストごとに接続を張って閉じる。
+  だからDB側の設定変更は、アプリを再起動しなくても次のリクエストから効く。
+
+
+4. 保守用の接続
+---------------
+
+  /opt/reportdb/maint.conf に運用担当用の接続情報がある (root のみ読める)。
+  libpq の環境変数名にしてあるので、export すれば psql に引数は要らない。
+
+    export $(sudo grep -v '^#' /opt/reportdb/maint.conf | xargs)
+    psql
+
+  このロール (dbadmin) はマスターユーザーで、GRANT も ALTER ROLE も
+  pg_terminate_backend も通る。接続枠が埋まっても予約枠で入れる。
+
+  注意: dbadmin で見えるものと reportapi で見えるものは違う。
+        権限もロール設定も行の見え方もロールごとなので、
+        アプリの症状を再現したいときは reportapi で繋ぎ直すこと。
+
+    PGPASSWORD=$(grep DB_PASSWORD /etc/reportapi/app.conf | cut -d= -f2) \
+      psql -h reportdb.internal -U reportapi -d reportdb
+
+
+5. DBサーバの設定
+-----------------
+
+  変更できないが、値は分かっている。
+
+    listen_addresses = '*'
+    port             = 5432
+    max_connections  = 30
+
+  一般ロールが使える枠は max_connections から
+  superuser_reserved_connections を引いた分まで。
+
+
+6. ロールに設定してある既定値
+-----------------------------
+
+  アプリは接続時にこれらを明示していない。ロール側の設定に依存している。
+
+    reportapi  search_path       = app, public
+    reportapi  statement_timeout = 3s
+
+  データベース単位の設定は入れていない
+  (pg_db_role_setting に reportdb の行は無い)。
+
+
+7. reportapi に必要な権限
+-------------------------
+
+  スキーマ   app                    USAGE
+  テーブル   app 配下の全テーブル   SELECT, INSERT, UPDATE
+  シーケンス app 配下の全シーケンス USAGE, SELECT
+
+  ただし app.audit_log とそのシーケンスは監査基盤の領域で、
+  reportapi には権限を渡していない。
+
+  行レベルセキュリティ(RLS)は、どのテーブルでも有効にしていない。
+
+
+8. スキーマ
+-----------
+
+  app.reports          レポート本体 (id は reports_id_seq)
+  app.counters         登録件数のカウンタ
+  app.report_targets   集計対象リージョン 40件
+  app.reports_archive  過去データ 200万件
+  app.audit_log        監査ログ (監査基盤が使う)
+
+  インデックス:
+    app.reports_archive (region, created_at)  -- idx_archive_region_created
+      /api/summary はリージョンごとの相関副問い合わせを40回まわす。
+      このインデックスが無いと全件走査を40回することになり、
+      statement_timeout に到達する。
+
+  トリガーは1つも仕掛けていない。
+
+
+9. このサーバからDBまでの経路
+-----------------------------
+
+  reportdb.internal は名前で引く。IPは直書きしていない。
+
+  平常時、このサーバのファイアウォールに 5432 を止める規則は無い。
+
+    sudo iptables -L OUTPUT -n --line-numbers
+
+  経路が生きているかの確認:
+
+    getent hosts reportdb.internal
+    nc -z -w2 reportdb.internal 5432
+    pg_isready -h reportdb.internal -p 5432
+
+
+10. バッチ
+----------
+
+  conn-hog.service     日中バッチ (application_name = batch-loader)
+  lock-holder.service  夜間集計   (application_name = nightly-recalc)
+
+  いずれもこのサーバで動く。平常時は停止しており、有効化もしていない。
+  DBのバックエンドを切っても、こちら側のサービスが動いていれば再接続してくる。
+
+  DBが見ている接続元をこのサーバのプロセスまで辿るには、
+  pg_stat_activity の client_port を ss -tnp のポートと突き合わせる。

@@ -1,0 +1,11 @@
+[Unit]
+Description=Report API watchdog
+After=reportapi.service
+
+[Service]
+ExecStart=/usr/local/sbin/db-watchdog
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
