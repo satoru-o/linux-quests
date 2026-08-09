@@ -1,0 +1,32 @@
+reports.internal のTLS構成
+==========================
+
+証明書の連鎖
+  Reports Root CA
+    └─ Reports Intermediate CA
+         └─ reports.internal (サーバ証明書)
+
+  利用者が信頼しているのは **ルートCAだけ**。
+  中間CAは信頼ストアに入っていないため、サーバ側が
+  「サーバ証明書 + 中間CA証明書」をまとめて送る必要がある。
+  サーバ証明書だけを送ると、利用者は連鎖をたどれず検証に失敗する。
+
+PKI資材の置き場所 (/opt/tls)
+  rootCA.crt        ルートCA証明書 (信頼ストアに入れるのはこれ)
+  rootCA.key        ルートCAの秘密鍵
+  intermediate.crt  中間CA証明書
+  intermediate.key  中間CAの秘密鍵
+  server.crt        サーバ証明書 (これ単体)
+  server.key        サーバの秘密鍵
+  fullchain.crt     サーバ証明書 + 中間CA証明書 (nginxに設定するのはこちら)
+
+nginxが読む場所 (/etc/nginx/tls)
+  server.crt        fullchain.crt を配置する
+  server.key        サーバの秘密鍵を配置する
+
+利用者側の信頼ストア
+  /usr/local/share/ca-certificates/reports-root.crt にルートCAを置き、
+  update-ca-certificates で /etc/ssl/certs に反映する。
+
+名前解決
+  reports.internal は /etc/hosts で 127.0.0.1 に向けている。
