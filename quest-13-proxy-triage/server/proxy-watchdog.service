@@ -1,0 +1,11 @@
+[Unit]
+Description=Proxy path watchdog
+After=nginx.service
+
+[Service]
+ExecStart=/usr/local/sbin/proxy-watchdog
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
